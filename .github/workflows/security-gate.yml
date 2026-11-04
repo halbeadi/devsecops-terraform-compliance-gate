@@ -15,19 +15,25 @@ jobs:
       - name: Checkout Repository
         uses: actions/checkout@v4
 
-      # 1. Run Trivy for IaC Misconfigurations (Replaces deprecated tfsec)
-      - name: Run Trivy IaC Scanner
-        uses: aquasecurity/trivy-action@master
+      - name: Set up Python
+        uses: actions/setup-python@v5
         with:
-          scan-type: 'config'
-          scan-ref: 'terraform/'
-          exit-code: '1'
-          severity: 'HIGH,CRITICAL'
+          python-version: '3.10'
 
-      # 2. Run Checkov for compliance and policy checks
+      # 1. Install and run Trivy natively via CLI
+      - name: Run Trivy IaC Security Scanner
+        run: |
+          echo "Installing Trivy..."
+          sudo apt-get install wget apt-transport-https gnupg lsb-release -y
+          wget -qO - https://aquasecurity.github.io/trivy-repo/deb/public.key | gpg --dearmor | sudo tee /usr/share/keyrings/trivy.gpg > /dev/null
+          echo "deb [signed-by=/usr/share/keyrings/trivy.gpg] https://aquasecurity.github.io/trivy-repo/deb $(lsb_release -sc) main" | sudo tee /etc/sudoers.d/trivy.list || echo "deb [signed-by=/usr/share/keyrings/trivy.gpg] https://aquasecurity.github.io/trivy-repo/deb generic main" | sudo tee /etc/apt/sources.list.d/trivy.list
+          sudo apt-get update && sudo apt-get install trivy -y
+          
+          echo "Running Trivy configuration scan..."
+          trivy config --exit-code 1 --severity HIGH,CRITICAL terraform/
+
+      # 2. Run Checkov Natively
       - name: Run Checkov Cloud Security Scanner
-        uses: bridgecrewio/checkov-action@master
-        with:
-          directory: terraform/
-          framework: terraform
-          soft_fail: false
+        run: |
+          pip install checkov
+          checkov -d terraform/ --soft-fail false
