@@ -8,24 +8,21 @@ on:
 
 jobs:
   terraform-security-scan:
-    name: IaC Security Scan (tfsec & Checkov)
+    name: IaC Security Scan (Trivy & Checkov)
     runs-on: ubuntu-latest
 
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v4
 
-      - name: Set up Python
-        uses: actions/setup-python@v5
+      # 1. Run Trivy for IaC Misconfigurations (Replaces deprecated tfsec)
+      - name: Run Trivy IaC Scanner
+        uses: aquasecurity/trivy-action@master
         with:
-          python-version: '3.10'
-
-      # 1. Run tfsec for static code analysis on Terraform
-      - name: Run tfsec scanner
-        uses: aquasecurity/tfsec-action@v1.0.3
-        with:
-          working_directory: terraform
-          github_token: ${{ secrets.GITHUB_TOKEN }}
+          scan-type: 'config'
+          scan-ref: 'terraform/'
+          exit-code: '1'
+          severity: 'HIGH,CRITICAL'
 
       # 2. Run Checkov for compliance and policy checks
       - name: Run Checkov Cloud Security Scanner
